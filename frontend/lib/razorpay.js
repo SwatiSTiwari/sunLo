@@ -1,0 +1,27 @@
+export function loadRazorpay() {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(false);
+      return;
+    }
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+export function openRazorpayModal(options) {
+  if (typeof window === "undefined" || !window.Razorpay) {
+    throw new Error("Razorpay available nahi hai");
+  }
+  const rzp = new window.Razorpay(options);
+  rzp.open();
+  return rzp;
+}
