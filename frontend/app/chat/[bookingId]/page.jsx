@@ -40,6 +40,7 @@ export default function ChatPage() {
   const inputRef = useRef(null);
   const timerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const hasEndedRef = useRef(false);
 
   // Access control and data fetch
   useEffect(() => {
@@ -52,19 +53,19 @@ export default function ChatPage() {
       try {
         const b = await getBooking(bookingId);
         if (!b) {
-          toast.error("Booking nahi mili");
+          toast.error("Booking not found");
           router.replace("/dashboard/user");
           return;
         }
         const isBooker = b.userId === user.uid;
         const isCompanion = b.companionId === user.uid;
         if (!isBooker && !isCompanion) {
-          toast.error("Aap is chat ko access nahi kar sakte");
+          toast.error("You cannot access this chat");
           router.replace("/dashboard/user");
           return;
         }
         if (b.status !== "confirmed" && b.status !== "completed") {
-          toast.error("Booking confirmed nahi hai. Pehle payment karo.");
+          toast.error("Booking is not confirmed. Please complete payment first.");
           router.replace("/dashboard/user");
           return;
         }
@@ -91,7 +92,8 @@ export default function ChatPage() {
           setShowRating(true);
         }
       } catch (e) {
-        toast.error("Kuch galat ho gaya");
+        console.error("Chat page load error:", e);
+        toast.error(e.message || "Something went wrong");
       } finally {
         setPageLoading(false);
       }
@@ -133,6 +135,17 @@ export default function ChatPage() {
     return () => clearInterval(timerRef.current);
   }, [sessionEnded, timeLeft]);
 
+  // Mark session complete when timer ends
+  useEffect(() => {
+    if (sessionEnded && bookingId && !hasEndedRef.current) {
+      hasEndedRef.current = true;
+      const endTime = new Date().toISOString();
+      updateBooking(bookingId, { sessionEndTime: endTime, status: "completed" }).catch((e) =>
+        console.error("Failed to mark session complete", e)
+      );
+    }
+  }, [sessionEnded, bookingId]);
+
   // Auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -150,7 +163,8 @@ export default function ChatPage() {
       setText("");
       inputRef.current?.focus();
     } catch (e) {
-      toast.error("Message bhejne mein error");
+      console.error("sendMessage error:", e);
+      toast.error(e.message || "Failed to send message");
     } finally {
       setSending(false);
     }
@@ -176,10 +190,10 @@ export default function ChatPage() {
         text: reviewText,
       });
       await updateBooking(bookingId, { status: "completed" });
-      toast.success("Review submit ho gaya, shukriya! 🙏");
+      toast.success("Review submitted, thank you! 🙏");
       router.push("/dashboard/user");
     } catch (e) {
-      toast.error("Review save nahi hua");
+      toast.error("Review could not be saved");
     }
   };
 
@@ -195,9 +209,9 @@ export default function ChatPage() {
       });
       setShowReport(false);
       setReportReason("");
-      toast.success("Report submit ho gaya. Hum jald action lenge.");
+      toast.success("Report submitted. We will take action soon.");
     } catch (e) {
-      toast.error("Report bhejne mein error");
+      toast.error("Failed to send report");
     }
   };
 
@@ -267,8 +281,8 @@ export default function ChatPage() {
       <div className={`flex-1 overflow-y-auto px-4 py-4 ${sessionEnded ? "blur-sm" : ""}`}>
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center text-center text-sm text-orange-300">
-            <p className="mb-1">Yahan pehla message bhejo 👋</p>
-            <p>Apne companion se baat shuru karo</p>
+            <p className="mb-1">Send the first message here 👋</p>
+            <p>Start talking to your companion</p>
           </div>
         )}
         <div className="space-y-4">
@@ -330,7 +344,7 @@ export default function ChatPage() {
                   handleSend();
                 }
               }}
-              placeholder="Yahan likho..."
+              placeholder="Type here..."
               className="flex-1 rounded-full border border-orange-100 bg-sunlo-background px-4 py-2.5 text-sm text-sunlo-text placeholder-sunlo-muted/60 shadow-sm transition-all focus:border-sunlo-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sunlo-secondary/50"
             />
             <button
@@ -355,10 +369,10 @@ export default function ChatPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-xl">
             <div className="mb-3 text-4xl">🙏</div>
-            <h3 className="mb-2 text-lg font-bold text-sunlo-text">Aapka session khatam hua</h3>
-            <p className="mb-6 text-sm text-sunlo-muted">Aapka waqt poora ho gaya. Ab review dein.</p>
+            <h3 className="mb-2 text-lg font-bold text-sunlo-text">Your session has ended</h3>
+            <p className="mb-6 text-sm text-sunlo-muted">Your time is up. Please leave a review.</p>
             <Button onClick={() => setShowRating(true)} className="w-full">
-              Review Dein
+              Leave Review
             </Button>
           </div>
         </div>
@@ -368,7 +382,7 @@ export default function ChatPage() {
       {showRating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-center text-lg font-bold text-sunlo-text">Session kaisa laga?</h3>
+            <h3 className="mb-4 text-center text-lg font-bold text-sunlo-text">How was your session?</h3>
             <div className="mb-4 flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -383,7 +397,7 @@ export default function ChatPage() {
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
-              placeholder="Koi baat share karni hai?"
+              placeholder="Anything you would like to share?"
               className="mb-4 w-full rounded-2xl border border-orange-100 bg-sunlo-background px-4 py-3 text-sm text-sunlo-text placeholder-sunlo-muted/60 shadow-sm focus:border-sunlo-primary focus:outline-none focus:ring-2 focus:ring-sunlo-secondary/50"
               rows={3}
             />
@@ -402,12 +416,12 @@ export default function ChatPage() {
       {showReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
-            <h3 className="mb-2 text-center text-lg font-bold text-sunlo-text">Report karein</h3>
-            <p className="mb-4 text-center text-sm text-sunlo-muted">Kya problem hui? Bataiye humein.</p>
+            <h3 className="mb-2 text-center text-lg font-bold text-sunlo-text">Report</h3>
+            <p className="mb-4 text-center text-sm text-sunlo-muted">What problem did you face? Let us know.</p>
             <textarea
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Reason likhein..."
+              placeholder="Write the reason..."
               className="mb-4 w-full rounded-2xl border border-orange-100 bg-sunlo-background px-4 py-3 text-sm text-sunlo-text placeholder-sunlo-muted/60 shadow-sm focus:border-sunlo-primary focus:outline-none focus:ring-2 focus:ring-sunlo-secondary/50"
               rows={3}
             />

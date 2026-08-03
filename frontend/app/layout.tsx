@@ -19,7 +19,7 @@ const noto = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "SunLo - Koi sun raha hai, hamesha",
+  title: "SunLo - Someone is listening, always",
   description:
     "SunLo is a safe space to talk with verified companions. Someone is listening, always.",
 };

@@ -11,6 +11,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "react-hot-toast";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+
 export default function BookPage() {
   const { user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -29,6 +31,10 @@ export default function BookPage() {
       router.replace("/login");
       return;
     }
+    if (userData?.role === "companion") {
+      router.replace("/dashboard/companion");
+      return;
+    }
     (async () => {
       try {
         const [cData, bookings] = await Promise.all([
@@ -36,19 +42,20 @@ export default function BookPage() {
           getUserBookings(user.uid),
         ]);
         if (!cData) {
-          toast.error("Companion nahi mila");
+          toast.error("Companion not found");
           router.replace("/browse");
           return;
         }
         setCompanion(cData);
         setHasBookedBefore(bookings.length > 0);
       } catch (e) {
-        toast.error("Kuch galat ho gaya, phir se try karo");
+        console.error("Book page load error:", e);
+        toast.error(e.message || "Something went wrong, please try again");
       } finally {
         setPageLoading(false);
       }
     })();
-  }, [user, authLoading, companionId, router]);
+  }, [user, authLoading, companionId, router, userData?.role]);
 
   const isFirstSessionFree = !hasBookedBefore && selectedDuration === 15;
   const { amount, companionEarnings, platformFee } = calculateBreakdown(selectedDuration);
@@ -69,12 +76,12 @@ export default function BookPage() {
       });
 
       if (isFirstSessionFree) {
-        toast.success("Pehla session free! Ab chat shuru karo 🎉");
+        toast.success("First session free! Start chatting now 🎉");
         router.push(`/chat/${bookingId}`);
         return;
       }
 
-      const res = await fetch("http://localhost:5000/api/payment/create-order", {
+      const res = await fetch(`${API_BASE}/api/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -85,12 +92,12 @@ export default function BookPage() {
       });
       const order = await res.json();
       if (!res.ok || !order.id) {
-        throw new Error(order.error || "Order create nahi hua");
+        throw new Error(order.error || "Order could not be created");
       }
 
       const rzpLoaded = await loadRazorpay();
       if (!rzpLoaded) {
-        throw new Error("Razorpay load nahi hua. Internet check karo.");
+        throw new Error("Razorpay failed to load. Please check your internet.");
       }
 
       openRazorpayModal({
@@ -106,7 +113,7 @@ export default function BookPage() {
         },
         handler: async (response) => {
           try {
-            const verifyRes = await fetch("http://localhost:5000/api/payment/verify", {
+            const verifyRes = await fetch(`${API_BASE}/api/payment/verify`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -118,23 +125,25 @@ export default function BookPage() {
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              toast.success("Payment successful! Ab chat shuru karo 🎉");
+              toast.success("Payment successful! Start chatting now 🎉");
               router.push(`/chat/${bookingId}`);
             } else {
-              toast.error(verifyData.error || "Payment verify nahi hua");
+              toast.error(verifyData.error || "Payment could not be verified");
             }
           } catch (e) {
-            toast.error("Payment verify mein error aayi");
+            console.error("Payment verify error:", e);
+            toast.error("Error verifying payment");
           }
         },
         modal: {
           ondismiss: () => {
-            toast("Payment cancel ho gaya", { icon: "ℹ️" });
+            toast("Payment cancelled", { icon: "ℹ️" });
           },
         },
       });
     } catch (err) {
-      toast.error(err.message || "Payment start nahi hua");
+      console.error("handlePay error:", err);
+      toast.error(err.message || "Payment could not be started");
     } finally {
       setIsPaying(false);
     }
@@ -171,13 +180,13 @@ export default function BookPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-sunlo-text">{companion?.name || "Companion"}</h2>
-            <p className="text-sm text-sunlo-muted">{companion?.bio?.slice(0, 60) || "Aapka SunLo companion"}</p>
+            <p className="text-sm text-sunlo-muted">{companion?.bio?.slice(0, 60) || "Your SunLo companion"}</p>
           </div>
         </div>
 
         {/* Duration Selector */}
         <div className="mb-6">
-          <h3 className="mb-3 text-base font-semibold text-sunlo-text">Session kitni der ka?</h3>
+          <h3 className="mb-3 text-base font-semibold text-sunlo-text">How long is the session?</h3>
           <div className="flex flex-wrap gap-3">
             {DURATIONS.map((d) => {
               const active = selectedDuration === d.value;
@@ -201,7 +210,7 @@ export default function BookPage() {
         {/* First Session Free Banner */}
         {isFirstSessionFree && (
           <div className="mb-6 rounded-3xl bg-sunlo-secondary p-4 text-center text-sm font-semibold text-sunlo-text shadow-soft">
-            Pehla session free! 🎉 Aapka 15 min ka session bilkul free hai.
+            First session free! 🎉 Your 15-minute session is completely free.
           </div>
         )}
 
@@ -214,7 +223,7 @@ export default function BookPage() {
               <span className="font-medium">₹{amount}</span>
             </div>
             <div className="flex justify-between text-sunlo-text">
-              <span>Companion ko milega</span>
+              <span>Companion earns</span>
               <span className="font-medium text-sunlo-success">₹{companionEarnings}</span>
             </div>
             <div className="flex justify-between text-sunlo-text">
@@ -230,7 +239,7 @@ export default function BookPage() {
 
         {/* Pay Button */}
         <Button onClick={handlePay} isLoading={isPaying} className="w-full">
-          {isFirstSessionFree ? "Free Session Shuru Karo" : "Razorpay se Pay Karo"}
+          {isFirstSessionFree ? "Start Free Session" : "Pay with Razorpay"}
         </Button>
       </main>
       <Footer />

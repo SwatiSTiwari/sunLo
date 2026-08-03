@@ -37,7 +37,8 @@ function CompanionDashboard() {
         setCompanion(compData);
         setBookings(bookData);
       } catch (err) {
-        toast.error("Data load nahi ho paya");
+        console.error("Companion dashboard load error:", err);
+        toast.error(err.message || "Failed to load data");
       } finally {
         setIsLoading(false);
       }
@@ -47,16 +48,22 @@ function CompanionDashboard() {
 
   const now = new Date();
 
+  const getSessionEnd = (b) => {
+    if (b.sessionEndTime) return new Date(b.sessionEndTime).getTime();
+    const start = b.sessionStartTime ? new Date(b.sessionStartTime).getTime() : new Date(b.createdAt).getTime();
+    return start + (b.duration || 15) * 60 * 1000;
+  };
+
   const upcoming = bookings.filter(
-    (b) => b.status === "confirmed" && new Date(b.sessionEndTime) > now
+    (b) => b.status === "confirmed" && getSessionEnd(b) > now.getTime()
   );
   const past = bookings.filter(
-    (b) => b.status === "confirmed" && new Date(b.sessionEndTime) <= now
+    (b) => b.status === "completed" || (b.status === "confirmed" && getSessionEnd(b) <= now.getTime())
   );
 
   const totalEarned = past.reduce((sum, b) => sum + (b.companionEarnings || 0), 0);
   const thisMonth = past.filter((b) => {
-    const d = new Date(b.sessionEndTime);
+    const d = new Date(getSessionEnd(b));
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const thisMonthEarned = thisMonth.reduce((sum, b) => sum + (b.companionEarnings || 0), 0);
@@ -68,16 +75,16 @@ function CompanionDashboard() {
     try {
       await updateCompanion(user.uid, { isAvailable: next });
       setCompanion((prev) => ({ ...prev, isAvailable: next }));
-      toast.success(next ? "Ab aap available hain" : "Ab aap unavailable hain");
+      toast.success(next ? "You are now available" : "You are now unavailable");
     } catch (err) {
-      toast.error("Update nahi ho paya");
+      toast.error("Update failed");
     } finally {
       setIsToggling(false);
     }
   };
 
   const formatDate = (iso) => {
-    const d = new Date(iso);
+    const d = iso ? new Date(iso) : new Date();
     return d.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
@@ -93,8 +100,8 @@ function CompanionDashboard() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-sunlo-text">Namaste, {userData?.name || "Friend"} 👋</h1>
-            <p className="mt-1 text-sm text-sunlo-muted">Aapka companion dashboard</p>
+            <h1 className="text-2xl font-bold text-sunlo-text">Hello, {userData?.name || "Friend"} 👋</h1>
+            <p className="mt-1 text-sm text-sunlo-muted">Your companion dashboard</p>
           </div>
           <button
             onClick={handleToggle}
@@ -124,7 +131,7 @@ function CompanionDashboard() {
                   <p className="text-xs text-sunlo-muted">This Month</p>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-sunlo-muted">Platform fee deduct hone ke baad amount show ho raha hai.</p>
+              <p className="mt-3 text-xs text-sunlo-muted">Amount shown is after platform fee deduction.</p>
             </div>
 
             <div className="mb-6 rounded-3xl bg-white p-5 shadow-card">
@@ -134,7 +141,7 @@ function CompanionDashboard() {
                   <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sunlo-primary border-t-transparent" />
                 </div>
               ) : upcoming.length === 0 ? (
-                <p className="py-4 text-center text-sm text-sunlo-muted">Koi upcoming session nahi hai</p>
+                <p className="py-4 text-center text-sm text-sunlo-muted">No upcoming sessions</p>
               ) : (
                 <div className="space-y-3">
                   {upcoming.map((b) => (
@@ -144,6 +151,9 @@ function CompanionDashboard() {
                         <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
                       </div>
                       <span className="rounded-full bg-sunlo-success/10 px-3 py-1 text-xs font-medium text-sunlo-success">Confirmed</span>
+                      <Link href={`/chat/${b.bookingId}`}>
+                        <Button className="px-3 py-2 text-xs">Chat</Button>
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -157,7 +167,7 @@ function CompanionDashboard() {
                   <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sunlo-primary border-t-transparent" />
                 </div>
               ) : past.length === 0 ? (
-                <p className="py-4 text-center text-sm text-sunlo-muted">Abhi tak koi session complete nahi hua</p>
+                <p className="py-4 text-center text-sm text-sunlo-muted">No sessions completed yet</p>
               ) : (
                 <div className="space-y-3">
                   {past.map((b) => (

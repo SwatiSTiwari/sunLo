@@ -19,7 +19,7 @@ export function loadRazorpay() {
 
 export function openRazorpayModal(options) {
   if (typeof window === "undefined" || !window.Razorpay) {
-    throw new Error("Razorpay available nahi hai");
+    throw new Error("Razorpay is not available");
   }
   const rzp = new window.Razorpay(options);
   rzp.open();

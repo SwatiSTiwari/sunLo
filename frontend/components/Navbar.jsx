@@ -34,7 +34,7 @@ export default function Navbar() {
             </Link>
           ) : (
             <Link
-              href="/login"
+              href="/login?role=user"
               className="text-sm font-medium text-sunlo-text/80 transition-colors hover:text-sunlo-primary"
             >
               Dashboard
@@ -52,7 +52,7 @@ export default function Navbar() {
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/login?role=user"
               className="rounded-full bg-gradient-to-r from-sunlo-primary to-sunlo-accent px-5 py-2 text-sm font-semibold text-white shadow-button transition-all hover:from-sunlo-primary-dark hover:to-sunlo-primary"
             >
               Login

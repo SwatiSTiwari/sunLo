@@ -68,7 +68,7 @@ export default function CompanionSetupPage() {
   const handleNext = () => {
     if (step === 1) {
       if (!name.trim() || !age.trim() || !city.trim()) {
-        toast.error("Sabh fields bhariye");
+        toast.error("Please fill all fields");
         return;
       }
       setStep(2);
@@ -77,7 +77,7 @@ export default function CompanionSetupPage() {
 
   const handleSubmit = async () => {
     if (!bio.trim() || languages.length === 0 || topics.length === 0) {
-      toast.error("Sabh fields bhariye");
+      toast.error("Please fill all fields");
       return;
     }
     setIsSubmitting(true);
@@ -91,10 +91,10 @@ export default function CompanionSetupPage() {
         languages,
         topics,
       });
-      toast.success("Profile ban gaya!");
+      toast.success("Profile created!");
       setStep(3);
     } catch (err) {
-      toast.error(err?.message || "Kuch galat ho gaya.");
+      toast.error(err?.message || "Something went wrong.");
       setIsSubmitting(false);
     }
   };
@@ -120,20 +120,20 @@ export default function CompanionSetupPage() {
               <h2 className="text-xl font-bold text-sunlo-text">Basic Info</h2>
               <Input
                 label="Full Name"
-                placeholder="Aapka naam"
+                placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <Input
                 label="Age"
                 type="number"
-                placeholder="Umar"
+                placeholder="Age"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
               />
               <Input
                 label="City"
-                placeholder="Shahar"
+                placeholder="City"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               />
@@ -143,7 +143,7 @@ export default function CompanionSetupPage() {
                 value={photo}
                 onChange={(e) => setPhoto(e.target.value)}
               />
-              <Button onClick={handleNext} className="w-full">Aage badho</Button>
+              <Button onClick={handleNext} className="w-full">Next</Button>
             </div>
           )}
 
@@ -159,7 +159,7 @@ export default function CompanionSetupPage() {
                   className="w-full rounded-xl border border-orange-100 bg-sunlo-background px-4 py-3 text-sunlo-text placeholder-sunlo-muted/60 shadow-sm transition-all focus:border-sunlo-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sunlo-secondary/50"
                   rows={4}
                   maxLength={200}
-                  placeholder="Apne baare mein thoda batayein..."
+                  placeholder="Tell us a little about yourself..."
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                 />
@@ -206,7 +206,7 @@ export default function CompanionSetupPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Peeche</Button>
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
                 <Button onClick={handleSubmit} className="flex-1" isLoading={isSubmitting}>Submit</Button>
               </div>
             </div>
@@ -217,9 +217,9 @@ export default function CompanionSetupPage() {
               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-sunlo-success/10">
                 <span className="text-4xl">🎉</span>
               </div>
-              <h2 className="font-hindi text-2xl font-bold text-sunlo-text">Profile set ho gayi!</h2>
-              <p className="mt-2 font-hindi text-sunlo-muted">Ab log tumse baat kar sakte hain 🎉</p>
-              <Button onClick={() => router.push("/dashboard/companion")} className="mt-6">Dashboard par jao</Button>
+              <h2 className="text-2xl font-bold text-sunlo-text">Profile setup complete!</h2>
+              <p className="mt-2 text-sunlo-muted">People can now talk to you 🎉</p>
+              <Button onClick={() => router.push("/dashboard/companion")} className="mt-6">Go to Dashboard</Button>
             </div>
           )}
         </div>

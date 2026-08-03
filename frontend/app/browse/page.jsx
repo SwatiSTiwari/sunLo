@@ -45,8 +45,8 @@ export default function BrowsePage() {
     <div className="min-h-screen bg-sunlo-background">
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="mb-2 text-center font-hindi text-2xl font-bold text-sunlo-text sm:text-3xl">
-          अपना सुनने वाला ढूंढो
+        <h1 className="mb-2 text-center text-2xl font-bold text-sunlo-text sm:text-3xl">
+          Find your listener
         </h1>
         <p className="mb-8 text-center text-sm text-sunlo-muted">
           Find a companion who listens with empathy and heart.

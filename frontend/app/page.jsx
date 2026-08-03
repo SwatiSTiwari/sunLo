@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Search, Calendar, MessageCircle, Shield, Users, Wallet } from "lucide-react";
+import { Search, Calendar, MessageCircle, Shield, Users, Wallet, Phone } from "lucide-react";
 
 const steps = [
   {
@@ -56,11 +56,11 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-sunlo-hero px-4 py-16 sm:py-24">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:items-center">
           <div className="flex-1 text-center lg:text-left">
-            <h1 className="font-hindi mb-4 text-6xl font-bold leading-tight text-sunlo-text sm:text-7xl">
-              सुनलो
+            <h1 className="mb-4 text-6xl font-bold leading-tight text-sunlo-text sm:text-7xl">
+              SunLo
             </h1>
-            <p className="font-hindi mb-2 text-xl font-medium text-sunlo-muted sm:text-2xl">
-              Koi sun raha hai, hamesha
+            <p className="mb-2 text-xl font-medium text-sunlo-muted sm:text-2xl">
+              Someone is listening, always
             </p>
             <p className="mb-8 text-sm text-sunlo-muted/80 sm:text-base">
               Find a companion to talk to, anonymously. Share your thoughts, feelings,
@@ -69,7 +69,7 @@ export default function LandingPage() {
 
             <div className="flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
               <Link
-                href="/browse"
+                href="/signup?role=user"
                 className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sunlo-primary to-sunlo-accent px-8 py-3 font-semibold text-white shadow-button transition-all hover:from-sunlo-primary-dark hover:to-sunlo-primary"
               >
                 Find a Companion
@@ -138,6 +138,44 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Crisis Disclaimer */}
+      <section className="mx-auto max-w-6xl px-4 pb-8 pt-4">
+        <div className="rounded-3xl border border-red-100 bg-red-50/50 p-6 shadow-soft sm:p-8">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+              <Phone className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-sunlo-text sm:text-xl">
+                Not a crisis or therapy service
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-sunlo-muted">
+                SunLo is a safe space for everyday conversations and emotional support.
+                It is not a substitute for professional mental health care, therapy, or emergency services.
+                If you are experiencing a serious mental health condition, suicidal thoughts, or any emergency,
+                please reach out to a qualified mental health professional immediately.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                <a
+                  href="tel:14416"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-red-600 shadow-sm transition-all hover:bg-red-100"
+                >
+                  <Phone className="h-4 w-4" />
+                  Tele MANAS: 14416
+                </a>
+                <a
+                  href="tel:08046110007"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-semibold text-red-600 shadow-sm transition-all hover:bg-red-100"
+                >
+                  <Phone className="h-4 w-4" />
+                  NIMHANS: 080-4611-0007
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3 Steps */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
         <h2 className="mb-12 text-center text-2xl font-bold text-sunlo-text sm:text-3xl">
@@ -166,7 +204,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 px-4 lg:flex-row">
           <div className="flex-1">
             <h2 className="mb-4 text-2xl font-bold text-sunlo-text sm:text-3xl">
-              Therapy se sasta, akele rehne se behtar
+              Cheaper than therapy, better than being alone
             </h2>
             <p className="mb-8 text-sunlo-muted">
               SunLo bridges the gap between expensive therapy and feeling alone.
@@ -193,7 +231,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
                   <div className="mb-4 text-6xl">🧘</div>
-                  <p className="font-hindi text-lg font-medium text-sunlo-text">Sukoon, ek baat door</p>
+                  <p className="text-lg font-medium text-sunlo-text">Peace, just a conversation away</p>
                 </div>
               </div>
             </div>

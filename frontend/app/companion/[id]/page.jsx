@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getCompanion, getCompanionReviews } from "@/lib/firestore";
+import { useAuth } from "@/lib/authContext";
 import Navbar from "@/components/Navbar";
 
 const durations = [
@@ -47,10 +48,12 @@ function StarRating({ rating }) {
 export default function CompanionDetailPage() {
   const params = useParams();
   const id = params?.id;
+  const { userData } = useAuth();
   const [companion, setCompanion] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDuration, setSelectedDuration] = useState("30");
+  const isCompanion = userData?.role === "companion";
 
   useEffect(() => {
     if (!id) return;
@@ -200,35 +203,37 @@ export default function CompanionDetailPage() {
                 </div>
               </div>
 
-              <div className="lg:w-80">
-                <div className="lg:sticky lg:top-24">
-                  <div className="rounded-3xl bg-white p-5 shadow-card">
-                    <h3 className="mb-4 text-lg font-semibold text-sunlo-text">Book a session</h3>
-                    <div className="mb-4 space-y-2">
-                      {durations.map((d) => (
-                        <button
-                          key={d.value}
-                          onClick={() => setSelectedDuration(d.value)}
-                          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all ${
-                            selectedDuration === d.value
-                              ? "border-sunlo-primary bg-sunlo-secondary-light text-sunlo-primary"
-                              : "border-orange-100 bg-white text-sunlo-text hover:border-orange-200"
-                          }`}
-                        >
-                          <span className="font-medium">{d.label}</span>
-                          <span className="font-bold">₹{d.price}</span>
-                        </button>
-                      ))}
+              {!isCompanion && (
+                <div className="lg:w-80">
+                  <div className="lg:sticky lg:top-24">
+                    <div className="rounded-3xl bg-white p-5 shadow-card">
+                      <h3 className="mb-4 text-lg font-semibold text-sunlo-text">Book a session</h3>
+                      <div className="mb-4 space-y-2">
+                        {durations.map((d) => (
+                          <button
+                            key={d.value}
+                            onClick={() => setSelectedDuration(d.value)}
+                            className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all ${
+                              selectedDuration === d.value
+                                ? "border-sunlo-primary bg-sunlo-secondary-light text-sunlo-primary"
+                                : "border-orange-100 bg-white text-sunlo-text hover:border-orange-200"
+                            }`}
+                          >
+                            <span className="font-medium">{d.label}</span>
+                            <span className="font-bold">₹{d.price}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <Link
+                        href={`/book/${id}?duration=${selectedDuration}`}
+                        className="block w-full rounded-xl bg-gradient-to-r from-sunlo-primary to-sunlo-accent py-3 text-center font-semibold text-white shadow-button transition-all hover:from-sunlo-primary-dark hover:to-sunlo-primary"
+                      >
+                        Book Now
+                      </Link>
                     </div>
-                    <Link
-                      href={`/book/${id}?duration=${selectedDuration}`}
-                      className="block w-full rounded-xl bg-gradient-to-r from-sunlo-primary to-sunlo-accent py-3 text-center font-semibold text-white shadow-button transition-all hover:from-sunlo-primary-dark hover:to-sunlo-primary"
-                    >
-                      Book Now
-                    </Link>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </>

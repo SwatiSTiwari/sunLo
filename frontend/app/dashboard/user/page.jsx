@@ -31,7 +31,7 @@ function UserDashboard() {
         const data = await getUserBookings(user.uid);
         setBookings(data);
       } catch (err) {
-        toast.error("Bookings load nahi ho payi");
+        toast.error("Failed to load bookings");
       } finally {
         setIsLoading(false);
       }
@@ -45,7 +45,7 @@ function UserDashboard() {
     (b) => b.status === "confirmed" && new Date(b.sessionEndTime) > now
   );
   const past = bookings.filter(
-    (b) => b.status === "confirmed" && new Date(b.sessionEndTime) <= now
+    (b) => b.status === "completed" || (b.status === "confirmed" && new Date(b.sessionEndTime || b.sessionStartTime) <= now)
   );
 
   const totalSessions = past.length;
@@ -75,9 +75,9 @@ function UserDashboard() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-sunlo-text">
-            Namaste, {userData?.name || "Friend"} 👋
+            Hello, {userData?.name || "Friend"} 👋
           </h1>
-          <p className="mt-1 text-sm text-sunlo-muted">Aapka dashboard</p>
+          <p className="mt-1 text-sm text-sunlo-muted">Your dashboard</p>
         </div>
 
         {/* Stats */}
@@ -105,7 +105,7 @@ function UserDashboard() {
                   <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-sunlo-primary border-t-transparent" />
                 </div>
               ) : upcoming.length === 0 ? (
-                <p className="py-4 text-center text-sm text-sunlo-muted">Koi upcoming session nahi hai</p>
+                <p className="py-4 text-center text-sm text-sunlo-muted">No upcoming sessions</p>
               ) : (
                 <div className="space-y-3">
                   {upcoming.map((b) => (
@@ -129,6 +129,9 @@ function UserDashboard() {
                         <p className="text-sm font-semibold text-sunlo-text">{b.companionName || "Companion"}</p>
                         <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
                       </div>
+                      <Link href={`/chat/${b.bookingId}`}>
+                        <Button className="px-3 py-2 text-xs">Chat</Button>
+                      </Link>
                       <span className="rounded-full bg-sunlo-success/10 px-3 py-1 text-xs font-medium text-sunlo-success">Confirmed</span>
                     </div>
                   ))}
@@ -144,9 +147,9 @@ function UserDashboard() {
                 </div>
               ) : past.length === 0 ? (
                 <div className="py-6 text-center">
-                  <p className="font-hindi text-base text-sunlo-muted">Abhi tak koi session nahi hua. Pehla session free hai! 🎉</p>
+                  <p className="text-base text-sunlo-muted">No sessions yet. First session is free! 🎉</p>
                   <Link href="/browse" className="mt-4 inline-block">
-                    <Button>Companion dhoondhein</Button>
+                    <Button>Find a companion</Button>
                   </Link>
                 </div>
               ) : (
@@ -174,7 +177,7 @@ function UserDashboard() {
                         <p className="text-xs font-medium text-sunlo-text">₹{b.amount || 0}</p>
                       </div>
                       <Link href={`/book/${b.companionId}`}>
-                        <Button variant="outline" className="px-3 py-2 text-xs">Fir se baat karo</Button>
+                        <Button variant="outline" className="px-3 py-2 text-xs">Talk again</Button>
                       </Link>
                     </div>
                   ))}

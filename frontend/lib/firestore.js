@@ -10,12 +10,25 @@ import {
   orderBy,
   addDoc,
   serverTimestamp,
+  limit,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
 export async function getUser(uid) {
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+export async function getUserByEmail(email) {
+  const q = query(
+    collection(db, "users"),
+    where("email", "==", email),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const docSnap = snap.docs[0];
+  return { uid: docSnap.id, ...docSnap.data() };
 }
 
 export async function updateUser(uid, data) {
