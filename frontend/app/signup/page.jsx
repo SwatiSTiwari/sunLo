@@ -39,7 +39,13 @@ export default function SignupPage() {
 
     setIsLoading(true);
     try {
-      const existingUser = await getUserByEmail(normalizedEmail);
+      let existingUser = null;
+      try {
+        existingUser = await getUserByEmail(normalizedEmail);
+      } catch (lookupErr) {
+        console.error("getUserByEmail failed:", lookupErr.code, lookupErr.message);
+        throw lookupErr;
+      }
       if (existingUser && existingUser.role === role) {
         toast.error("An account with this email already exists. Please log in.");
         setIsLoading(false);
@@ -47,11 +53,17 @@ export default function SignupPage() {
       }
 
       const cred = await signup(normalizedEmail, password);
-      await createUserDoc(cred.user.uid, {
-        email: normalizedEmail,
-        role,
-        name,
-      });
+      await cred.user.getIdToken(true);
+      try {
+        await createUserDoc(cred.user.uid, {
+          email: normalizedEmail,
+          role,
+          name,
+        });
+      } catch (docErr) {
+        console.error("createUserDoc failed:", docErr.code, docErr.message);
+        throw docErr;
+      }
 
       toast.success("Account created!");
       if (role === "user") {

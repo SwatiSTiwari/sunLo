@@ -16,10 +16,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if request.query.limit <= 1
-        && request.query.filters.size() == 1
-        && request.query.filters[0].field == "email"
-        && request.query.filters[0].op == "==";
+      allow list: if true;
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
     }

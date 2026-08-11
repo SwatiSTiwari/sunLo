@@ -47,6 +47,10 @@ export function AuthProvider({ children }) {
 
   const createUserDoc = async (uid, data) => {
     if (!db) throw new Error("Firebase Firestore not configured");
+    if (!auth) throw new Error("Firebase Auth not configured");
+    if (auth.currentUser) {
+      await auth.currentUser.getIdToken(true);
+    }
     await setDoc(doc(db, "users", uid), {
       ...data,
       createdAt: new Date().toISOString(),
