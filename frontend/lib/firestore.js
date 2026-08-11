@@ -135,6 +135,14 @@ export async function getCompanionReviews(companionId) {
 export async function createReport(data) {
   await addDoc(collection(db, "reports"), {
     ...data,
+    status: "pending",
     createdAt: new Date().toISOString(),
+  });
+}
+
+export async function updateReportStatus(reportId, data) {
+  await updateDoc(doc(db, "reports", reportId), {
+    ...data,
+    updatedAt: new Date().toISOString(),
   });
 }

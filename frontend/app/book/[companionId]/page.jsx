@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { getCompanion, createBooking, getUserBookings } from "@/lib/firestore";
+import { notifyBookingConfirmed } from "@/lib/notifications";
 import { DURATIONS, calculateBreakdown } from "@/lib/constants";
 import { loadRazorpay, openRazorpayModal } from "@/lib/razorpay";
+import { API_BASE } from "@/lib/api";
 import Button from "@/components/ui/Button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "react-hot-toast";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
 export default function BookPage() {
   const { user, userData, loading: authLoading } = useAuth();
@@ -35,6 +35,11 @@ export default function BookPage() {
       router.replace("/dashboard/companion");
       return;
     }
+    if (userData?.suspended) {
+      toast.error("Your account has been suspended. Please contact support.");
+      router.replace("/dashboard/user");
+      return;
+    }
     (async () => {
       try {
         const [cData, bookings] = await Promise.all([
@@ -55,7 +60,7 @@ export default function BookPage() {
         setPageLoading(false);
       }
     })();
-  }, [user, authLoading, companionId, router, userData?.role]);
+  }, [user, authLoading, companionId, router, userData?.role, userData?.suspended]);
 
   const isFirstSessionFree = !hasBookedBefore && selectedDuration === 15;
   const { amount, companionEarnings, platformFee } = calculateBreakdown(selectedDuration);
@@ -73,9 +78,18 @@ export default function BookPage() {
         companionEarnings,
         platformFee,
         status: isFirstSessionFree ? "confirmed" : "pending",
+        userName: userData?.name || user.displayName || user.email || "User",
+        companionName: companion?.name || "Companion",
+        userEmail: user.email || "",
+        companionEmail: companion?.email || "",
       });
 
       if (isFirstSessionFree) {
+        try {
+          await notifyBookingConfirmed(bookingId);
+        } catch (err) {
+          console.error("Booking notification error:", err);
+        }
         toast.success("First session free! Start chatting now 🎉");
         router.push(`/chat/${bookingId}`);
         return;

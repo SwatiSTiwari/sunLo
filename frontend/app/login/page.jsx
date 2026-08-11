@@ -55,6 +55,12 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
       }
+      if (freshUser.suspended) {
+        await signOut(auth);
+        toast.error("Your account has been suspended. Please contact support.");
+        setIsLoading(false);
+        return;
+      }
       if (freshUser.role === "companion") {
         router.push(freshUser.profileComplete ? "/dashboard/companion" : "/setup/companion");
       } else {

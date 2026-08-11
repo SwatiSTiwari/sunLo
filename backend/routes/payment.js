@@ -43,6 +43,8 @@ router.post("/create-order", async (req, res) => {
   }
 });
 
+const { sendBookingConfirmedNotification } = require("../services/notifications");
+
 router.post("/verify", async (req, res) => {
   try {
     if (!process.env.RAZORPAY_KEY_SECRET) {
@@ -88,6 +90,15 @@ router.post("/verify", async (req, res) => {
       orderId: razorpay_order_id,
       paidAt: new Date().toISOString(),
     });
+
+    try {
+      const updatedSnap = await bookingRef.get();
+      if (updatedSnap.exists) {
+        await sendBookingConfirmedNotification({ bookingId, ...updatedSnap.data() });
+      }
+    } catch (notifyErr) {
+      console.error("Failed to send booking confirmation notification:", notifyErr);
+    }
 
     res.json({ success: true, bookingId });
   } catch (err) {

@@ -15,7 +15,9 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
       return;
     }
     if (allowedRoles.length > 0 && userData?.role && !allowedRoles.includes(userData.role)) {
-      const redirectPath = userData.role === "companion" ? "/dashboard/companion" : "/dashboard/user";
+      let redirectPath = "/dashboard/user";
+      if (userData.role === "companion") redirectPath = "/dashboard/companion";
+      if (userData.role === "admin") redirectPath = "/admin/dashboard";
       router.replace(redirectPath);
     }
   }, [user, userData, loading, allowedRoles, router]);

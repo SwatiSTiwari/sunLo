@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { getCompanionBookings, updateCompanion, getCompanion } from "@/lib/firestore";
+import NotificationBell from "@/components/NotificationBell";
+import { createMeeting, resendMeetingLink, getMeetingStatus } from "@/lib/meetings";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Button from "@/components/ui/Button";
 import Navbar from "@/components/Navbar";
@@ -25,6 +27,8 @@ function CompanionDashboard() {
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
+  const [generatingMap, setGeneratingMap] = useState({});
+  const [resendingMap, setResendingMap] = useState({});
 
   useEffect(() => {
     if (!user) return;
@@ -94,6 +98,92 @@ function CompanionDashboard() {
     });
   };
 
+  async function handleGenerateMeet(booking) {
+    setGeneratingMap((prev) => ({ ...prev, [booking.bookingId]: true }));
+    try {
+      const result = await createMeeting(booking.bookingId);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.bookingId === booking.bookingId
+            ? { ...b, meetLink: result.meetLink, calendarEventId: result.calendarEventId, meetingStatus: "scheduled" }
+            : b
+        )
+      );
+      toast.success("Google Meet link generated and shared");
+    } catch (err) {
+      console.error("Generate meet error:", err);
+      toast.error(err.message || "Failed to generate Meet link");
+    } finally {
+      setGeneratingMap((prev) => ({ ...prev, [booking.bookingId]: false }));
+    }
+  }
+
+  async function handleResendMeet(booking) {
+    setResendingMap((prev) => ({ ...prev, [booking.bookingId]: true }));
+    try {
+      await resendMeetingLink(booking.bookingId);
+      toast.success("Meet link resent");
+    } catch (err) {
+      console.error("Resend meet error:", err);
+      toast.error(err.message || "Failed to resend Meet link");
+    } finally {
+      setResendingMap((prev) => ({ ...prev, [booking.bookingId]: false }));
+    }
+  }
+
+  async function handleCopyLink(meetLink) {
+    try {
+      await navigator.clipboard.writeText(meetLink);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Copy failed");
+    }
+  }
+
+  function renderMeetingActions(booking) {
+    const status = getMeetingStatus(booking);
+    if (booking.status !== "confirmed") return null;
+    if (!booking.meetLink) {
+      return (
+        <button
+          onClick={() => handleGenerateMeet(booking)}
+          disabled={generatingMap[booking.bookingId]}
+          className="rounded-full bg-gradient-to-r from-sunlo-primary to-sunlo-accent px-3 py-1.5 text-xs font-semibold text-white shadow-button disabled:opacity-50"
+        >
+          {generatingMap[booking.bookingId] ? "Generating..." : "Generate Meet"}
+        </button>
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-full px-3 py-1 text-xs font-medium ${status === "Active" ? "bg-green-100 text-green-700" : status === "Completed" ? "bg-gray-100 text-gray-600" : "bg-blue-100 text-blue-700"}`}>
+          {status || "Scheduled"}
+        </span>
+        <a
+          href={booking.meetLink}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full bg-sunlo-primary/10 px-3 py-1 text-xs font-semibold text-sunlo-primary"
+        >
+          Join
+        </a>
+        <button
+          onClick={() => handleCopyLink(booking.meetLink)}
+          className="rounded-full bg-sunlo-secondary px-3 py-1 text-xs font-semibold text-sunlo-text"
+        >
+          Copy
+        </button>
+        <button
+          onClick={() => handleResendMeet(booking)}
+          disabled={resendingMap[booking.bookingId]}
+          className="rounded-full bg-sunlo-secondary px-3 py-1 text-xs font-semibold text-sunlo-text disabled:opacity-50"
+        >
+          {resendingMap[booking.bookingId] ? "Resending..." : "Resend"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-sunlo-background">
       <Navbar />
@@ -115,6 +205,7 @@ function CompanionDashboard() {
             <span className={`inline-block h-2.5 w-2.5 rounded-full ${companion?.isAvailable ? "bg-sunlo-success" : "bg-gray-400"}`} />
             {companion?.isAvailable ? "Online" : "Offline"}
           </button>
+          <NotificationBell />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -145,15 +236,17 @@ function CompanionDashboard() {
               ) : (
                 <div className="space-y-3">
                   {upcoming.map((b) => (
-                    <div key={b.bookingId} className="flex items-center gap-3 rounded-xl bg-sunlo-secondary-light p-3">
+                    <div key={b.bookingId} className="flex flex-col gap-2 rounded-xl bg-sunlo-secondary-light p-3 sm:flex-row sm:items-center">
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-sunlo-text">{b.userName || "User"}</p>
                         <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
                       </div>
-                      <span className="rounded-full bg-sunlo-success/10 px-3 py-1 text-xs font-medium text-sunlo-success">Confirmed</span>
-                      <Link href={`/chat/${b.bookingId}`}>
-                        <Button className="px-3 py-2 text-xs">Chat</Button>
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {renderMeetingActions(b)}
+                        <Link href={`/chat/${b.bookingId}`}>
+                          <Button className="px-3 py-2 text-xs">Chat</Button>
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>

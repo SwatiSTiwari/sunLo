@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/authContext";
 import { getBooking, updateBooking, getUser, getCompanion, createReview, createReport } from "@/lib/firestore";
 import { sendMessage, subscribeToMessages, setTyping, subscribeToTyping } from "@/lib/chat";
 import Button from "@/components/ui/Button";
+import LinkifyText from "@/components/LinkifyText";
 import { toast } from "react-hot-toast";
 
 function formatTime(ms) {
@@ -71,9 +72,20 @@ export default function ChatPage() {
         }
         setBooking(b);
 
+        if (userData?.suspended) {
+          toast.error("Your account has been suspended.");
+          router.replace("/dashboard/user");
+          return;
+        }
+
         // Fetch other party details
         const otherId = isBooker ? b.companionId : b.userId;
         const otherData = isBooker ? await getCompanion(otherId) : await getUser(otherId);
+        if (otherData?.suspended) {
+          toast.error("This account is no longer available.");
+          router.replace("/dashboard/user");
+          return;
+        }
         setOther(otherData);
 
         // Start session timer if not started
@@ -98,7 +110,7 @@ export default function ChatPage() {
         setPageLoading(false);
       }
     })();
-  }, [user, authLoading, bookingId, router]);
+  }, [user, authLoading, bookingId, router, userData]);
 
   // Subscribe to messages
   useEffect(() => {
@@ -296,7 +308,7 @@ export default function ChatPage() {
             return (
               <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-soft ${isMe ? "rounded-tr-none bg-gradient-to-br from-sunlo-primary to-sunlo-accent text-white" : "rounded-tl-none bg-sunlo-secondary-light text-sunlo-text"}`}>
-                  <p>{msg.text}</p>
+                  <p><LinkifyText text={msg.text} /></p>
                   <p className={`mt-1 text-[10px] ${isMe ? "text-white/80" : "text-sunlo-muted"}`}>
                     {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                   </p>
@@ -374,6 +386,12 @@ export default function ChatPage() {
             <Button onClick={() => setShowRating(true)} className="w-full">
               Leave Review
             </Button>
+            <button
+              onClick={() => setShowReport(true)}
+              className="mt-4 text-sm text-red-500 hover:underline"
+            >
+              Report issue
+            </button>
           </div>
         </div>
       )}

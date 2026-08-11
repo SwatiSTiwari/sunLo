@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import Logo from "@/components/Logo";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Navbar() {
   const { user, userData, logout } = useAuth();
@@ -26,6 +27,8 @@ export default function Navbar() {
               href={
                 userData?.role === "companion"
                   ? "/dashboard/companion"
+                  : userData?.role === "admin"
+                  ? "/admin/dashboard"
                   : "/dashboard/user"
               }
               className="text-sm font-medium text-sunlo-text/80 transition-colors hover:text-sunlo-primary"
@@ -43,6 +46,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3">
+          {user && <NotificationBell />}
           {user ? (
             <button
               onClick={logout}
