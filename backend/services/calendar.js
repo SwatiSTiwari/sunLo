@@ -11,21 +11,27 @@ function getServiceAccountJson() {
   }
 }
 
-function getCalendarClient() {
+async function getCalendarClient() {
   const credentials = getServiceAccountJson();
   if (!credentials) return null;
-  const auth = new google.auth.JWT(
-    credentials.client_email,
-    null,
-    credentials.private_key,
-    ["https://www.googleapis.com/auth/calendar"],
-    null
-  );
+  const auth = new google.auth.JWT({
+    email: credentials.client_email,
+    key: credentials.private_key,
+    scopes: ["https://www.googleapis.com/auth/calendar"],
+  });
+
+  try {
+    await auth.authorize();
+  } catch (err) {
+    console.error("Google Calendar service account authorization failed:", err);
+    throw new Error("Google Calendar service account authorization failed: " + err.message);
+  }
+
   return google.calendar({ version: "v3", auth });
 }
 
 async function createMeetEvent({ summary, description, startTime, endTime, attendees, calendarId = "primary" }) {
-  const calendar = getCalendarClient();
+  const calendar = await getCalendarClient();
   if (!calendar) {
     throw new Error("Google Calendar service account not configured");
   }
@@ -35,7 +41,6 @@ async function createMeetEvent({ summary, description, startTime, endTime, atten
     description,
     start: { dateTime: new Date(startTime).toISOString(), timeZone: "Asia/Kolkata" },
     end: { dateTime: new Date(endTime).toISOString(), timeZone: "Asia/Kolkata" },
-    attendees: attendees.filter((a) => a?.email).map((a) => ({ email: a.email })),
     conferenceData: {
       createRequest: {
         requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -50,9 +55,22 @@ async function createMeetEvent({ summary, description, startTime, endTime, atten
     requestBody: event,
   });
 
+  const meetLink = res.data.conferenceData?.entryPoints?.[0]?.uri || res.data.hangoutLink;
+  const eventId = res.data.id;
+
+  // Delete the calendar event so it does not appear on any calendar.
+  // The Meet link usually remains usable.
+  if (eventId && calendarId) {
+    try {
+      await calendar.events.delete({ calendarId, eventId, sendUpdates: "none" });
+    } catch (deleteErr) {
+      console.error("Failed to delete temporary calendar event:", deleteErr);
+    }
+  }
+
   return {
-    eventId: res.data.id,
-    meetLink: res.data.conferenceData?.entryPoints?.[0]?.uri || res.data.hangoutLink,
+    eventId,
+    meetLink,
     htmlLink: res.data.htmlLink,
   };
 }
