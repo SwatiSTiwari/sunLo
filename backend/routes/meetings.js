@@ -41,6 +41,7 @@ router.post("/create", verifyIdToken, async (req, res) => {
 
     const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
     const event = await createMeetEvent({
+      bookingId,
       summary: `SunLo session — ${booking.userName || "User"} & ${booking.companionName || "Companion"}`,
       description: "SunLo companion session",
       startTime,
