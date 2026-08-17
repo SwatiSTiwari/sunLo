@@ -11,6 +11,7 @@ import { API_BASE } from "@/lib/api";
 import Button from "@/components/ui/Button";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Avatar from "@/components/Avatar";
 import { toast } from "react-hot-toast";
 
 export default function BookPage() {
@@ -179,19 +180,11 @@ export default function BookPage() {
       <main className="mx-auto max-w-md px-4 py-6">
         {/* Companion Mini Card */}
         <div className="mb-6 flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft">
-          <div className="h-14 w-14 overflow-hidden rounded-full bg-orange-100">
-            {companion?.photoURL ? (
-              <img
-                src={companion.photoURL}
-                alt={companion.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-sunlo-primary">
-                {(companion?.name || "C").charAt(0)}
-              </div>
-            )}
-          </div>
+          <Avatar
+            src={companion?.photoURL || companion?.photo}
+            name={companion?.name}
+            size={56}
+          />
           <div>
             <h2 className="text-lg font-semibold text-sunlo-text">{companion?.name || "Companion"}</h2>
             <p className="text-sm text-sunlo-muted">{companion?.bio?.slice(0, 60) || "Your SunLo companion"}</p>

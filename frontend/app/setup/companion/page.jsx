@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/authContext";
 import { createCompanion } from "@/lib/firestore";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import toast from "react-hot-toast";
 
 const LANGUAGES = ["Hindi", "English", "Marathi", "Bengali", "Tamil", "Telugu", "Gujarati"];
@@ -20,7 +21,8 @@ export default function CompanionSetupPage() {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photoURL, setPhotoURL] = useState("");
+  const [photoPath, setPhotoPath] = useState("");
   const [bio, setBio] = useState("");
   const [languages, setLanguages] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -86,7 +88,8 @@ export default function CompanionSetupPage() {
         name,
         age: Number(age),
         city,
-        photo,
+        photoURL,
+        photoPath,
         bio,
         languages,
         topics,
@@ -137,11 +140,19 @@ export default function CompanionSetupPage() {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               />
-              <Input
-                label="Profile Photo URL"
-                placeholder="https://..."
-                value={photo}
-                onChange={(e) => setPhoto(e.target.value)}
+              <ProfilePhotoUploader
+                uid={user.uid}
+                currentPhotoURL={photoURL}
+                currentPhotoPath={photoPath}
+                fallbackName={name}
+                onUploadComplete={({ photoURL: url, photoPath: path }) => {
+                  setPhotoURL(url);
+                  setPhotoPath(path);
+                }}
+                onRemove={() => {
+                  setPhotoURL("");
+                  setPhotoPath("");
+                }}
               />
               <Button onClick={handleNext} className="w-full">Next</Button>
             </div>

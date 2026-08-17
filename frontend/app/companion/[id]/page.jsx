@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Avatar from "@/components/Avatar";
 import { getCompanion, getCompanionReviews } from "@/lib/firestore";
 import { useAuth } from "@/lib/authContext";
 import Navbar from "@/components/Navbar";
@@ -103,20 +103,12 @@ export default function CompanionDetailPage() {
             <div className="flex flex-col gap-8 lg:flex-row">
               <div className="flex-1">
                 <div className="relative -mt-16 mb-4 flex justify-center lg:justify-start">
-                  <div className="relative h-32 w-32 overflow-hidden rounded-full border-4 border-white shadow-card">
-                    {companion.photo ? (
-                      <Image
-                        src={companion.photo}
-                        alt={companion.name || "Companion"}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-orange-100 text-3xl font-bold text-sunlo-primary">
-                        {(companion.name || "?")[0]}
-                      </div>
-                    )}
-                  </div>
+                  <Avatar
+                    src={companion.photoURL || companion.photo}
+                    name={companion.name}
+                    size={128}
+                    className="rounded-full border-4 border-white shadow-card"
+                  />
                 </div>
 
                 <div className="mb-6 text-center lg:text-left">

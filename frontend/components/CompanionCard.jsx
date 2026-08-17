@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
+import Avatar from "@/components/Avatar";
 import Button from "./ui/Button";
 
 export default function CompanionCard({ companion }) {
@@ -13,10 +14,11 @@ export default function CompanionCard({ companion }) {
     <div className="rounded-3xl bg-white p-5 shadow-card transition hover:-translate-y-1 hover:shadow-soft">
       <div className="mb-4 flex items-center gap-4">
         <div className="relative">
-          <img
-            src={companion.photo || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + companion.uid}
-            alt={companion.name}
-            className="h-16 w-16 rounded-full border-2 border-sunlo-secondary object-cover"
+          <Avatar
+            src={companion.photoURL || companion.photo}
+            name={companion.name}
+            size={64}
+            className="rounded-full border-2 border-sunlo-secondary"
           />
           <span
             className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white ${

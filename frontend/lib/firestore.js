@@ -32,7 +32,7 @@ export async function getUserByEmail(email) {
 }
 
 export async function updateUser(uid, data) {
-  await updateDoc(doc(db, "users", uid), data);
+  await setDoc(doc(db, "users", uid), data, { merge: true });
 }
 
 export async function createCompanion(uid, data) {
@@ -72,15 +72,23 @@ export async function getCompanions(filters = {}) {
 }
 
 export async function updateCompanion(uid, data) {
-  await updateDoc(doc(db, "companions", uid), data);
+  await setDoc(doc(db, "companions", uid), data, { merge: true });
 }
 
 export async function createBooking(data) {
   const bookingId = `${data.userId}_${Date.now()}`;
+  const [companionSnap, userSnap] = await Promise.all([
+    getDoc(doc(db, "companions", data.companionId)),
+    getDoc(doc(db, "users", data.userId)),
+  ]);
+  const companion = companionSnap.exists() ? companionSnap.data() : {};
+  const user = userSnap.exists() ? userSnap.data() : {};
   await setDoc(doc(db, "bookings", bookingId), {
     ...data,
     bookingId,
     status: data.status || "pending",
+    companionPhoto: companion.photoURL || companion.photo || "",
+    userPhoto: user.photoURL || "",
     createdAt: new Date().toISOString(),
   });
   return bookingId;

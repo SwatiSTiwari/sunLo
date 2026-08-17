@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/lib/authContext";
 import { getCompanionBookings, updateCompanion, getCompanion } from "@/lib/firestore";
+import { deleteProfilePhoto } from "@/lib/storage";
+import Avatar from "@/components/Avatar";
+import ProfilePhotoUploader from "@/components/ProfilePhotoUploader";
 import NotificationBell from "@/components/NotificationBell";
 import { createMeeting, resendMeetingLink, getMeetingStatus } from "@/lib/meetings";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -84,6 +86,37 @@ function CompanionDashboard() {
       toast.error("Update failed");
     } finally {
       setIsToggling(false);
+    }
+  };
+
+  const handlePhotoUpload = async (result) => {
+    try {
+      await updateCompanion(user.uid, { photoURL: result.photoURL, photoPath: result.photoPath });
+      const refreshed = await getCompanion(user.uid);
+      setCompanion(refreshed);
+    } catch (err) {
+      console.error("Profile photo update error:", err);
+      toast.error(err.message || "Failed to save profile photo");
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    const pathToDelete = companion?.photoPath;
+    try {
+      await updateCompanion(user.uid, { photoURL: "", photoPath: "" });
+      if (pathToDelete) {
+        try {
+          await deleteProfilePhoto(pathToDelete);
+        } catch (deleteErr) {
+          console.warn("Failed to delete previous profile photo:", deleteErr);
+        }
+      }
+      const refreshed = await getCompanion(user.uid);
+      setCompanion(refreshed);
+      toast.success("Profile photo removed");
+    } catch (err) {
+      console.error("Profile photo remove error:", err);
+      toast.error(err.message || "Failed to remove profile photo");
     }
   };
 
@@ -290,15 +323,12 @@ function CompanionDashboard() {
           <div className="space-y-6">
             <div className="rounded-3xl bg-white p-5 shadow-card">
               <div className="flex items-center gap-3">
-                <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-sunlo-secondary">
-                  {companion?.photoURL ? (
-                    <Image src={companion.photoURL} alt={companion.name} fill className="object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-orange-100 text-xl font-bold text-sunlo-primary">
-                      {(companion?.name || "C").charAt(0)}
-                    </div>
-                  )}
-                </div>
+                <Avatar
+                  src={companion?.photoURL || companion?.photo}
+                  name={companion?.name}
+                  size={64}
+                  className="border-2 border-sunlo-secondary"
+                />
                 <div>
                   <p className="font-semibold text-sunlo-text">{companion?.name || "Companion"}</p>
                   <p className="text-xs text-sunlo-muted">{companion?.bio?.slice(0, 60) || "No bio"}...</p>
@@ -307,6 +337,17 @@ function CompanionDashboard() {
               <Link href={`/companion/${user?.uid}`}>
                 <Button variant="outline" className="mt-4 w-full">View Public Profile</Button>
               </Link>
+              <div className="mt-6 border-t border-sunlo-secondary-light pt-6">
+                <ProfilePhotoUploader
+                  uid={user?.uid}
+                  currentPhotoURL={companion?.photoURL || companion?.photo}
+                  currentPhotoPath={companion?.photoPath}
+                  fallbackName={companion?.name}
+                  onUploadComplete={handlePhotoUpload}
+                  onRemove={handlePhotoRemove}
+                  size={120}
+                />
+              </div>
             </div>
           </div>
         </div>

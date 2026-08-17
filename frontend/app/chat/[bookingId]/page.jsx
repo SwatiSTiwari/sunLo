@@ -7,6 +7,7 @@ import { getBooking, updateBooking, getUser, getCompanion, createReview, createR
 import { sendMessage, subscribeToMessages, setTyping, subscribeToTyping } from "@/lib/chat";
 import Button from "@/components/ui/Button";
 import LinkifyText from "@/components/LinkifyText";
+import Avatar from "@/components/Avatar";
 import { toast } from "react-hot-toast";
 
 function formatTime(ms) {
@@ -255,16 +256,12 @@ export default function ChatPage() {
             </svg>
           </button>
           <div className="relative">
-            <div className="h-10 w-10 overflow-hidden rounded-full bg-orange-100">
-              {other?.photoURL ? (
-                <img src={other.photoURL} alt={other.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-sunlo-primary">
-                  {(other?.name || "C").charAt(0)}
-                </div>
-              )}
-            </div>
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-sunlo-success" />
+            <Avatar
+              src={other?.photoURL || other?.photo}
+              name={other?.name}
+              size={40}
+              isOnline
+            />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-sunlo-text">{other?.name || "Companion"}</h2>
