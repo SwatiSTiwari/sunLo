@@ -54,19 +54,30 @@ router.post("/create", verifyIdToken, async (req, res) => {
       meetLink: event.meetLink,
       calendarEventId: event.eventId,
       meetingStatus: "scheduled",
+      sessionStartTime: startTime,
+      sessionEndTime: endTime,
     });
 
-    const messageRef = rtdb.ref(`chats/${bookingId}/messages`);
-    await messageRef.push({
-      senderId: "system",
-      senderName: "SunLo",
-      text: `Google Meet link: ${event.meetLink}`,
-      timestamp: Date.now(),
-    });
+    // Best-effort: share link in chat and notify. Do not fail the request if these fail.
+    try {
+      const messageRef = rtdb.ref(`chats/${bookingId}/messages`);
+      await messageRef.push({
+        senderId: "system",
+        senderName: "SunLo",
+        text: `Google Meet link: ${event.meetLink}`,
+        timestamp: Date.now(),
+      });
+    } catch (rtdbErr) {
+      console.error("Failed to post meet link message to RTDB:", rtdbErr);
+    }
 
-    await sendMeetingLinkNotification({ booking: { ...booking, meetLink: event.meetLink }, meetLink: event.meetLink });
+    try {
+      await sendMeetingLinkNotification({ booking: { ...booking, meetLink: event.meetLink }, meetLink: event.meetLink });
+    } catch (notifyErr) {
+      console.error("Failed to send meeting link notification:", notifyErr);
+    }
 
-    res.json({ success: true, meetLink: event.meetLink, calendarEventId: event.eventId });
+    res.json({ success: true, meetLink: event.meetLink, calendarEventId: event.eventId, sessionStartTime: startTime, sessionEndTime: endTime });
   } catch (err) {
     console.error("Create meeting error:", err);
     res.status(500).json({ error: err.message || "Failed to create meeting" });
@@ -91,14 +102,25 @@ router.post("/resend", verifyIdToken, async (req, res) => {
     if (!booking.meetLink) {
       return res.status(400).json({ error: "No meeting link exists" });
     }
-    const messageRef = rtdb.ref(`chats/${bookingId}/messages`);
-    await messageRef.push({
-      senderId: "system",
-      senderName: "SunLo",
-      text: `Google Meet link: ${booking.meetLink}`,
-      timestamp: Date.now(),
-    });
-    await sendMeetingLinkNotification({ booking, meetLink: booking.meetLink });
+
+    try {
+      const messageRef = rtdb.ref(`chats/${bookingId}/messages`);
+      await messageRef.push({
+        senderId: "system",
+        senderName: "SunLo",
+        text: `Google Meet link: ${booking.meetLink}`,
+        timestamp: Date.now(),
+      });
+    } catch (rtdbErr) {
+      console.error("Failed to repost meet link message to RTDB:", rtdbErr);
+    }
+
+    try {
+      await sendMeetingLinkNotification({ booking, meetLink: booking.meetLink });
+    } catch (notifyErr) {
+      console.error("Failed to resend meeting link notification:", notifyErr);
+    }
+
     res.json({ success: true, meetLink: booking.meetLink });
   } catch (err) {
     console.error("Resend meeting error:", err);

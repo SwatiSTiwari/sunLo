@@ -56,8 +56,17 @@ function CompanionDashboard() {
 
   const getSessionEnd = (b) => {
     if (b.sessionEndTime) return new Date(b.sessionEndTime).getTime();
-    const start = b.sessionStartTime ? new Date(b.sessionStartTime).getTime() : new Date(b.createdAt).getTime();
+    const start = b.sessionStartTime
+      ? new Date(b.sessionStartTime).getTime()
+      : b.createdAt
+      ? new Date(b.createdAt).getTime()
+      : Date.now();
     return start + (b.duration || 15) * 60 * 1000;
+  };
+
+  const getSessionStart = (b) => {
+    if (b.sessionStartTime) return new Date(b.sessionStartTime).getTime();
+    return b.createdAt ? new Date(b.createdAt).getTime() : Date.now();
   };
 
   const upcoming = bookings.filter(
@@ -272,7 +281,7 @@ function CompanionDashboard() {
                     <div key={b.bookingId} className="flex flex-col gap-2 rounded-xl bg-sunlo-secondary-light p-3 sm:flex-row sm:items-center">
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-sunlo-text">{b.userName || "User"}</p>
-                        <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
+                        <p className="text-xs text-sunlo-muted">{formatDate(getSessionStart(b))}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {renderMeetingActions(b)}
@@ -300,7 +309,7 @@ function CompanionDashboard() {
                     <div key={b.bookingId} className="flex items-center gap-3 rounded-xl border border-orange-100 p-3">
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-sunlo-text">{b.userName || "User"}</p>
-                        <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
+                        <p className="text-xs text-sunlo-muted">{formatDate(getSessionStart(b))}</p>
                         <p className="text-xs font-medium text-sunlo-text">Earned: ₹{b.companionEarnings || 0}</p>
                       </div>
                       <div className="text-right">
@@ -336,6 +345,9 @@ function CompanionDashboard() {
               </div>
               <Link href={`/companion/${user?.uid}`}>
                 <Button variant="outline" className="mt-4 w-full">View Public Profile</Button>
+              </Link>
+              <Link href="/dashboard/companion/profile/edit">
+                <Button variant="outline" className="mt-2 w-full">Edit Profile</Button>
               </Link>
               <div className="mt-6 border-t border-sunlo-secondary-light pt-6">
                 <ProfilePhotoUploader

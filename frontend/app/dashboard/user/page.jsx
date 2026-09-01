@@ -64,11 +64,26 @@ function UserDashboard() {
 
   const now = new Date();
 
+  const getSessionEnd = (b) => {
+    if (b.sessionEndTime) return new Date(b.sessionEndTime).getTime();
+    const start = b.sessionStartTime
+      ? new Date(b.sessionStartTime).getTime()
+      : b.createdAt
+      ? new Date(b.createdAt).getTime()
+      : Date.now();
+    return start + (b.duration || 15) * 60 * 1000;
+  };
+
+  const getSessionStart = (b) => {
+    if (b.sessionStartTime) return new Date(b.sessionStartTime).getTime();
+    return b.createdAt ? new Date(b.createdAt).getTime() : Date.now();
+  };
+
   const upcoming = bookings.filter(
-    (b) => b.status === "confirmed" && new Date(b.sessionEndTime) > now
+    (b) => b.status === "confirmed" && getSessionEnd(b) > now.getTime()
   );
   const past = bookings.filter(
-    (b) => b.status === "completed" || (b.status === "confirmed" && new Date(b.sessionEndTime || b.sessionStartTime) <= now)
+    (b) => b.status === "completed" || (b.status === "confirmed" && getSessionEnd(b) <= now.getTime())
   );
 
   const totalSessions = past.length;
@@ -85,10 +100,15 @@ function UserDashboard() {
     });
   };
 
-  const getDuration = (start, end) => {
-    const s = new Date(start);
-    const e = new Date(end);
-    const mins = Math.round((e - s) / 60000);
+  const getDuration = (b) => {
+    const startMs = b.sessionStartTime ? new Date(b.sessionStartTime).getTime() : null;
+    const endMs = b.sessionEndTime
+      ? new Date(b.sessionEndTime).getTime()
+      : startMs
+      ? startMs + (b.duration || 15) * 60 * 1000
+      : null;
+    if (!startMs || !endMs) return `${b.duration || 15} min`;
+    const mins = Math.round((endMs - startMs) / 60000);
     return `${mins} min`;
   };
 
@@ -141,7 +161,7 @@ function UserDashboard() {
                       />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-sunlo-text">{b.companionName || "Companion"}</p>
-                        <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)}</p>
+                        <p className="text-xs text-sunlo-muted">{formatDate(getSessionStart(b))}</p>
                       </div>
                       <Link href={`/chat/${b.bookingId}`}>
                         <Button className="px-3 py-2 text-xs">Chat</Button>
@@ -178,7 +198,7 @@ function UserDashboard() {
                       />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-sunlo-text">{b.companionName || "Companion"}</p>
-                        <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)} · {getDuration(b.sessionStartTime, b.sessionEndTime)}</p>
+                        <p className="text-xs text-sunlo-muted">{formatDate(b.sessionStartTime)} · {getDuration(b)}</p>
                         <p className="text-xs font-medium text-sunlo-text">₹{b.amount || 0}</p>
                       </div>
                       <Link href={`/book/${b.companionId}`}>
@@ -208,6 +228,9 @@ function UserDashboard() {
                   <p className="text-xs text-sunlo-muted">{userData?.email}</p>
                 </div>
               </div>
+              <Link href="/dashboard/user/profile/edit">
+                <Button variant="outline" className="mt-4 w-full">Edit Profile</Button>
+              </Link>
             </div>
 
             <div className="rounded-3xl bg-gradient-to-br from-sunlo-primary to-sunlo-accent p-5 text-white shadow-button">

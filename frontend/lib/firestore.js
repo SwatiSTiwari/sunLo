@@ -11,6 +11,7 @@ import {
   addDoc,
   serverTimestamp,
   limit,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -99,6 +100,12 @@ export async function getBooking(bookingId) {
   return snap.exists() ? { bookingId, ...snap.data() } : null;
 }
 
+export function subscribeToBooking(bookingId, callback) {
+  return onSnapshot(doc(db, "bookings", bookingId), (snap) => {
+    callback(snap.exists() ? { bookingId: snap.id, ...snap.data() } : null);
+  });
+}
+
 export async function updateBooking(bookingId, data) {
   await updateDoc(doc(db, "bookings", bookingId), data);
 }
@@ -124,10 +131,26 @@ export async function getCompanionBookings(companionId) {
 }
 
 export async function createReview(data) {
+  const { bookingId, companionId, rating } = data;
   await addDoc(collection(db, "reviews"), {
     ...data,
     createdAt: new Date().toISOString(),
   });
+
+  if (bookingId) {
+    await updateDoc(doc(db, "bookings", bookingId), { rating });
+  }
+
+  const reviewsQuery = query(
+    collection(db, "reviews"),
+    where("companionId", "==", companionId)
+  );
+  const reviewsSnap = await getDocs(reviewsQuery);
+  const reviews = reviewsSnap.docs.map((d) => d.data());
+  const averageRating = reviews.length
+    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+    : 0;
+  await updateDoc(doc(db, "companions", companionId), { rating: averageRating });
 }
 
 export async function getCompanionReviews(companionId) {

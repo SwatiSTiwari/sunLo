@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { getUserByEmail } from "@/lib/firestore";
+import { isValidEmail, getPasswordErrors } from "@/lib/validation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Logo from "@/components/Logo";
@@ -14,7 +15,7 @@ import toast from "react-hot-toast";
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signup, createUserDoc } = useAuth();
+  const { signup, createUserDoc, user, userData, loading } = useAuth();
 
   const rawRole = searchParams.get("role");
   const role = rawRole === "user" || rawRole === "companion" ? rawRole : null;
@@ -23,19 +24,47 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (loading) return;
+    if (user && userData) {
+      if (userData.role === "companion") {
+        router.push(userData.profileComplete ? "/dashboard/companion" : "/setup/companion");
+      } else if (userData.role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard/user");
+      }
+    }
+  }, [user, userData, loading, router]);
+
+  if (loading || (user && userData)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-sunlo-background">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-sunlo-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      toast.error("Please fill all fields");
-      return;
-    }
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
+    const normalizedEmail = email.trim().toLowerCase();
+    const newErrors = {};
+
+    if (!name.trim()) newErrors.name = "Name is required";
+    if (!normalizedEmail) newErrors.email = "Email is required";
+    else if (!isValidEmail(normalizedEmail)) newErrors.email = "Please enter a valid email address";
+    if (!password) newErrors.password = "Password is required";
+    else {
+      const pwdErrors = getPasswordErrors(password);
+      if (pwdErrors.length) {
+        newErrors.password = `Password must contain: ${pwdErrors.join(", ")}`;
+      }
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     setIsLoading(true);
     try {
@@ -158,6 +187,7 @@ export default function SignupPage() {
                   placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  error={errors.name}
                   required
                 />
                 <Input
@@ -166,6 +196,7 @@ export default function SignupPage() {
                   placeholder="email@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
                   required
                 />
                 <Input
@@ -174,6 +205,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  error={errors.password}
                   required
                 />
                 <Button

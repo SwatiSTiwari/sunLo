@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { getBooking, updateBooking, getUser, getCompanion, createReview, createReport } from "@/lib/firestore";
+import { getBooking, updateBooking, getUser, getCompanion, createReview, createReport, subscribeToBooking } from "@/lib/firestore";
 import { sendMessage, subscribeToMessages, setTyping, subscribeToTyping } from "@/lib/chat";
 import Button from "@/components/ui/Button";
 import LinkifyText from "@/components/LinkifyText";
@@ -17,6 +17,39 @@ function formatTime(ms) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function getSessionState(booking) {
+  let startMs = null;
+  let endMs = null;
+
+  if (booking?.sessionStartTime) {
+    startMs = new Date(booking.sessionStartTime).getTime();
+  }
+  if (booking?.sessionEndTime) {
+    endMs = new Date(booking.sessionEndTime).getTime();
+  }
+
+  // Fallback for bookings generated before stored timestamps were added
+  if ((!startMs || Number.isNaN(startMs)) && booking?.meetLink) {
+    startMs = booking.createdAt ? new Date(booking.createdAt).getTime() : Date.now();
+  }
+  if (startMs && (!endMs || Number.isNaN(endMs))) {
+    endMs = startMs + (booking.duration || 15) * 60 * 1000;
+  }
+
+  if (!startMs || Number.isNaN(startMs) || !endMs || Number.isNaN(endMs)) {
+    return { phase: "waiting", timeLeft: 0, startMs, endMs };
+  }
+
+  const now = Date.now();
+  if (now < startMs) {
+    return { phase: "scheduled", timeLeft: startMs - now, startMs, endMs };
+  }
+  if (now >= endMs) {
+    return { phase: "completed", timeLeft: 0, startMs, endMs };
+  }
+  return { phase: "active", timeLeft: endMs - now, startMs, endMs };
+}
+
 export default function ChatPage() {
   const { user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -24,11 +57,12 @@ export default function ChatPage() {
   const bookingId = params.bookingId;
 
   const [booking, setBooking] = useState(null);
-  const [other, setOther] = useState(null); // companion or user
+  const [other, setOther] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [typingMap, setTypingMap] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
+  const [phase, setPhase] = useState("waiting");
   const [sessionEnded, setSessionEnded] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
@@ -44,7 +78,7 @@ export default function ChatPage() {
   const typingTimeoutRef = useRef(null);
   const hasEndedRef = useRef(false);
 
-  // Access control and data fetch
+  // Access control and initial data fetch
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -79,7 +113,6 @@ export default function ChatPage() {
           return;
         }
 
-        // Fetch other party details
         const otherId = isBooker ? b.companionId : b.userId;
         const otherData = isBooker ? await getCompanion(otherId) : await getUser(otherId);
         if (otherData?.suspended) {
@@ -89,18 +122,10 @@ export default function ChatPage() {
         }
         setOther(otherData);
 
-        // Start session timer if not started
-        if (!b.sessionStartTime) {
-          const now = new Date().toISOString();
-          await updateBooking(bookingId, { sessionStartTime: now });
-          b.sessionStartTime = now;
-        }
-
-        const durationMs = (b.duration || 15) * 60 * 1000;
-        const endTime = new Date(b.sessionStartTime).getTime() + durationMs;
-        const remaining = endTime - Date.now();
-        setTimeLeft(remaining);
-        if (remaining <= 0) {
+        const state = getSessionState(b);
+        setPhase(state.phase);
+        setTimeLeft(state.timeLeft);
+        if (state.phase === "completed") {
           setSessionEnded(true);
           setShowRating(true);
         }
@@ -112,6 +137,23 @@ export default function ChatPage() {
       }
     })();
   }, [user, authLoading, bookingId, router, userData]);
+
+  // Subscribe to booking updates so timer stays in sync with stored start/end times
+  useEffect(() => {
+    if (!bookingId) return;
+    const unsub = subscribeToBooking(bookingId, (updated) => {
+      if (!updated) return;
+      setBooking((prev) => (prev ? { ...prev, ...updated } : updated));
+      const state = getSessionState(updated);
+      setPhase(state.phase);
+      setTimeLeft(state.timeLeft);
+      if (state.phase === "completed" && !sessionEnded) {
+        setSessionEnded(true);
+        setShowRating(true);
+      }
+    });
+    return () => unsub();
+  }, [bookingId, sessionEnded]);
 
   // Subscribe to messages
   useEffect(() => {
@@ -133,27 +175,27 @@ export default function ChatPage() {
 
   // Timer countdown
   useEffect(() => {
-    if (sessionEnded || timeLeft <= 0) return;
+    if (phase === "completed" || phase === "waiting") return;
     timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1000) {
-          clearInterval(timerRef.current);
-          setSessionEnded(true);
-          setShowRating(true);
-          return 0;
-        }
-        return prev - 1000;
-      });
+      if (!booking) return;
+      const state = getSessionState(booking);
+      setPhase(state.phase);
+      setTimeLeft(state.timeLeft);
+      if (state.phase === "completed") {
+        clearInterval(timerRef.current);
+        setSessionEnded(true);
+        setShowRating(true);
+      }
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [sessionEnded, timeLeft]);
+  }, [phase, booking]);
 
   // Mark session complete when timer ends
   useEffect(() => {
     if (sessionEnded && bookingId && !hasEndedRef.current) {
       hasEndedRef.current = true;
-      const endTime = new Date().toISOString();
-      updateBooking(bookingId, { sessionEndTime: endTime, status: "completed" }).catch((e) =>
+      const now = new Date().toISOString();
+      updateBooking(bookingId, { sessionEndTime: now, status: "completed" }).catch((e) =>
         console.error("Failed to mark session complete", e)
       );
     }
@@ -203,7 +245,7 @@ export default function ChatPage() {
         text: reviewText,
       });
       await updateBooking(bookingId, { status: "completed" });
-      toast.success("Review submitted, thank you! 🙏");
+      toast.success("Review submitted, thank you!");
       router.push("/dashboard/user");
     } catch (e) {
       toast.error("Review could not be saved");
@@ -229,8 +271,24 @@ export default function ChatPage() {
   };
 
   const isBooker = booking?.userId === user?.uid;
+  const otherName = other?.name || (isBooker ? booking?.companionName : booking?.userName) || "Companion";
+  const otherPhoto = other?.photoURL || other?.photo || (isBooker ? booking?.companionPhoto : booking?.userPhoto);
   const otherTypingKey = other?.uid || "other";
   const isOtherTyping = typingMap[otherTypingKey] === true;
+
+  function timerBadgeClass() {
+    if (phase === "completed") return "bg-gray-100 text-gray-500";
+    if (phase === "scheduled") return "bg-blue-100 text-blue-700";
+    if (timeLeft <= 60000) return "bg-red-100 text-red-600";
+    return "bg-orange-100 text-sunlo-primary";
+  }
+
+  function timerBadgeText() {
+    if (phase === "completed") return "Ended";
+    if (phase === "scheduled") return `Starts in ${formatTime(timeLeft)}`;
+    if (phase === "waiting") return "Waiting";
+    return formatTime(timeLeft);
+  }
 
   if (authLoading || pageLoading) {
     return (
@@ -257,24 +315,26 @@ export default function ChatPage() {
           </button>
           <div className="relative">
             <Avatar
-              src={other?.photoURL || other?.photo}
-              name={other?.name}
+              src={otherPhoto}
+              name={otherName}
               size={40}
               isOnline
             />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-sunlo-text">{other?.name || "Companion"}</h2>
-            <p className="text-xs text-sunlo-muted">Online</p>
+            <h2 className="text-sm font-semibold text-sunlo-text">{otherName}</h2>
+            <p className="text-xs text-sunlo-muted">
+              {phase === "active" ? "In session" : phase === "scheduled" ? "Session scheduled" : phase === "completed" ? "Session ended" : "Waiting to start"}
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${timeLeft <= 60000 && !sessionEnded ? "bg-red-100 text-red-600" : "bg-orange-100 text-sunlo-primary"}`}>
+          <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${timerBadgeClass()}`}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {sessionEnded ? "00:00" : formatTime(timeLeft)}
+            {timerBadgeText()}
           </div>
           <button
             onClick={() => setShowReport(true)}
@@ -317,7 +377,7 @@ export default function ChatPage() {
             <div className="flex justify-start">
               <div className="max-w-[75%] rounded-2xl rounded-tl-none bg-sunlo-secondary-light px-4 py-2.5 text-sm text-sunlo-text shadow-soft">
                 <span className="inline-flex items-center gap-1">
-                  {other?.name || "Companion"} typing
+                  {otherName} typing
                   <span className="inline-flex gap-0.5">
                     <span className="h-1 w-1 animate-bounce rounded-full bg-sunlo-muted" style={{ animationDelay: "0ms" }} />
                     <span className="h-1 w-1 animate-bounce rounded-full bg-sunlo-muted" style={{ animationDelay: "150ms" }} />

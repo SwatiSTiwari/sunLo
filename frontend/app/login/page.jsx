@@ -7,6 +7,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/authContext";
 import { getUser } from "@/lib/firestore";
+import { isValidEmail } from "@/lib/validation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Logo from "@/components/Logo";
@@ -16,36 +17,48 @@ import toast from "react-hot-toast";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, userData, login } = useAuth();
+  const { user, userData, login, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const role = searchParams.get("role");
   const isValidRole = role === "user" || role === "companion";
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-sunlo-background">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-sunlo-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   if (user && userData) {
-    if (userData.role === role) {
-      if (userData.role === "companion") {
-        router.push(userData.profileComplete ? "/dashboard/companion" : "/setup/companion");
-      } else {
-        router.push("/dashboard/user");
-      }
+    if (userData.role === "companion") {
+      router.push(userData.profileComplete ? "/dashboard/companion" : "/setup/companion");
+    } else if (userData.role === "admin") {
+      router.push("/admin/dashboard");
     } else {
-      signOut(auth);
+      router.push("/dashboard/user");
     }
     return null;
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error("Please enter email and password");
-      return;
-    }
+    const lowerEmail = email.trim().toLowerCase();
+    const newErrors = {};
+
+    if (!lowerEmail) newErrors.email = "Email is required";
+    else if (!isValidEmail(lowerEmail)) newErrors.email = "Please enter a valid email address";
+    if (!password) newErrors.password = "Password is required";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
     setIsLoading(true);
     try {
-      const lowerEmail = email.toLowerCase();
       const cred = await login(lowerEmail, password);
       const freshUser = await getUser(cred.user.uid);
       if (freshUser?.role !== role) {
@@ -110,6 +123,7 @@ export default function LoginPage() {
                   placeholder="email@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
                   required
                 />
                 <Input
@@ -118,6 +132,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  error={errors.password}
                   required
                 />
                 <Button type="submit" className="w-full" isLoading={isLoading}>
